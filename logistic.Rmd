@@ -1,0 +1,95 @@
+---
+title: "logistics"
+author: "Natalie"
+date: "7/11/2020"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+library(lubridate)
+```
+
+```{r}
+orders <- read.csv('delivery_orders_march.csv')
+str(orders)
+```
+
+```{r}
+orders = orders %>%
+  mutate(pick = as_datetime(pick),
+         X1st_deliver_attempt = as_datetime(X1st_deliver_attempt),
+         X2nd_deliver_attempt = as_datetime(X2nd_deliver_attempt)) %>%
+  select(orderid, pick, first_delivery = X1st_deliver_attempt, second_delivery = X2nd_deliver_attempt, buyeraddress,selleraddress)
+
+head(orders)
+
+a = orders %>%
+    mutate(buyer_add = case_when(str_detect(str_to_lower(buyeraddress), 'metro manila') ~ 'metro manila',
+                                 str_detect(str_to_lower(buyeraddress), 'luzon') ~ 'luzon',
+                                 str_detect(str_to_lower(buyeraddress), 'visayas') ~ 'visayas',
+                                 str_detect(str_to_lower(buyeraddress), 'mindanao') ~ 'mindanao'),
+          seller_add = case_when(str_detect(str_to_lower(selleraddress), 'metro manila') ~ 'metro manila',
+                                 str_detect(str_to_lower(selleraddress), 'luzon') ~ 'luzon',
+                                 str_detect(str_to_lower(selleraddress), 'visayas') ~ 'visayas',
+                                 str_detect(str_to_lower(selleraddress), 'mindanao') ~ 'mindanao')) %>%
+    select(orderid, pick, first_delivery, second_delivery, buyer_add, seller_add)
+
+b = a %>%
+    mutate(first_attempt = case_when(buyer_add == 'metro manila' & seller_add == 'metro manila' ~ 3,
+                                     buyer_add == 'metro manila' & seller_add == 'luzon' ~ 5,
+                                     buyer_add == 'metro manila' & seller_add == 'visayas' ~ 7,
+                                     buyer_add == 'metro manila' & seller_add == 'mindanao' ~ 7,
+                                     buyer_add == 'luzon' & seller_add == 'metro manila' ~ 5,
+                                     buyer_add == 'luzon' & seller_add == 'luzon' ~ 5,
+                                     buyer_add == 'luzon' & seller_add == 'visayas' ~ 7,
+                                     buyer_add == 'luzon' & seller_add == 'mindanao' ~ 7,
+                                     buyer_add == 'visayas' & seller_add == 'metro manila' ~ 7,
+                                     buyer_add == 'visayas' & seller_add == 'luzon' ~ 7,
+                                     buyer_add == 'visayas' & seller_add == 'visayas' ~ 7,
+                                     buyer_add == 'visayas' & seller_add == 'mindanao' ~ 7,
+                                     buyer_add == 'mindanao' & seller_add == 'metro manila' ~ 7,
+                                     buyer_add == 'mindanao' & seller_add == 'luzon' ~ 7,
+                                     buyer_add == 'mindanao' & seller_add == 'visayas' ~ 7,
+                                     buyer_add == 'mindanao' & seller_add == 'mindanao' ~ 7))
+
+Nweekdays <- Vectorize(function(a, b) 
+  sum(!weekdays(seq(a, b, 'day'))[-1] %in% c("Sunday") & !seq.Date(a,b,1)[-1] %in% holidays))
+
+holidays <- as.Date(c("2020/03/25", "2020/03/30", "2020/03/31"))
+```
+
+```{r}
+real_first_duration <- Nweekdays(as.Date(b$pick), as.Date(b$first_delivery))
+
+x <-  data.frame(real_first_duration = real_first_duration)
+new <- cbind(b, x)
+
+new$second_delivery <- ifelse(is.na(new$second_delivery),
+                      new$first_delivery+1,
+                      new$second_delivery)
+new <- new %>%
+  mutate(second_delivery = as_datetime(second_delivery))
+
+real_second_duration <- Nweekdays(as.Date(new$first_delivery),as.Date(new$second_delivery))
+
+y <- data.frame(real_second_duration = real_second_duration)
+newer <- cbind(new, y)
+```
+
+```{r}
+c <-  newer %>%
+    mutate(is_late = case_when(real_first_duration > first_attempt ~ 1,
+                               real_first_duration <= first_attempt & real_second_duration > 3 ~ 1,
+                               TRUE ~ 0)) %>%
+    select(orderid, is_late)
+    
+```
+
+```{r}
+d <- c %>% mutate(orderid = as.character(orderid))
+write.csv(d, 'logistic_submission.csv', row.names = FALSE)
+```
+
+
+
