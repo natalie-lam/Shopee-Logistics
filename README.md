@@ -7,3 +7,19 @@ In order to handle the millions of parcels that need to be delivered everyday, w
 The performance of these providers is monitored regularly and each provider is held accountable based on the Service Level Agreements (SLA). Late deliveries are flagged out and penalties are imposed on the providers to ensure they perform their utmost.
 
 The consistent monitoring and process of holding our logistics providers accountable allows us to maintain our promise of timely deliveries to our buyers.
+
+## Task
+
+Identify all the orders that are considered late depending on the Service Level Agreements (SLA) with our Logistics Provider.
+
+For the purpose of this question, assume that all deliveries are considered successful by the second attempt.
+
+## Submission Format
+Check each delivery order and determine whether it is late.
+
+Two columns required:
+
+orderid.
+is_late: assign value 1 if the order is late, otherwise 0.
+
+
